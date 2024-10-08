@@ -22,29 +22,27 @@ class _AuthScreenState extends State<AuthScreen> {
     if (formState != null && formState.validate()) {
       formState.save();
 
-      if (_hasAccount) {
-        // log users in
-      } else {
-        try {
+      try {
+        if (_hasAccount) {
+          final userCredentials = await _firebase.signInWithEmailAndPassword(
+              email: _enteredEmail, password: _enteredPassword);
+        } else {
           final userCredentials =
               await _firebase.createUserWithEmailAndPassword(
                   email: _enteredEmail, password: _enteredPassword);
-          print(userCredentials);
-        } on FirebaseAuthException catch (error) {
-          if (!mounted) return; // 檢查組件是否仍掛載
-          ScaffoldMessenger.of(context).clearSnackBars();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error.message ?? '註冊失敗'),
-            ),
-          );
         }
+      } on FirebaseAuthException catch (error) {
+        if (!mounted) return; // 檢查組件是否仍掛載
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.message ?? '註冊失敗'),
+          ),
+        );
       }
     } else {
       return;
     }
-
-    print('Email: $_enteredEmail, Password: $_enteredPassword');
   }
 
   @override
