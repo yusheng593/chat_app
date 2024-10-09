@@ -1,3 +1,8 @@
+import 'dart:io';
+
+import 'package:chat_app/widgets/user_image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -14,8 +19,41 @@ class _AuthScreenState extends State<AuthScreen> {
   final _from = GlobalKey<FormState>();
   bool _hasAccount = true;
 
-  String _enteredEmail = '';
-  String _enteredPassword = '';
+  String _enteredEmail = 'test@haha.com';
+  String _enteredPassword = '123456';
+  String _enteredUsername = '密斯特路';
+  File? _selectedImage;
+  bool _isAuthenticating = false;
+
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.text = _enteredEmail;
+    _passwordController.text = _enteredPassword;
+    _usernameController.text = _enteredUsername;
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _usernameController.dispose();
+    super.dispose();
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return; // 檢查組件是否仍掛載
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+      ),
+    );
+  }
 
   void _submit() async {
     final formState = _from.currentState;
@@ -23,22 +61,50 @@ class _AuthScreenState extends State<AuthScreen> {
       formState.save();
 
       try {
+        setState(() {
+          _isAuthenticating = true;
+        });
         if (_hasAccount) {
           final userCredentials = await _firebase.signInWithEmailAndPassword(
               email: _enteredEmail, password: _enteredPassword);
         } else {
-          final userCredentials =
-              await _firebase.createUserWithEmailAndPassword(
-                  email: _enteredEmail, password: _enteredPassword);
+          if (_selectedImage != null) {
+            final userCredentials =
+                await _firebase.createUserWithEmailAndPassword(
+                    email: _enteredEmail, password: _enteredPassword);
+
+            final userId = userCredentials.user?.uid;
+            if (userId != null) {
+              final storageRef = FirebaseStorage.instance
+                  .ref()
+                  .child('user_image')
+                  .child('$userId.jpg');
+
+              await storageRef.putFile(_selectedImage!);
+              final imageUrl = await storageRef.getDownloadURL();
+
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(userId)
+                  .set({
+                'username': _enteredUsername,
+                'email': _enteredEmail,
+                'image_url': imageUrl,
+              });
+            } else {
+              _showMessage('註冊失敗');
+            }
+          } else {
+            _showMessage('請先設置頭像');
+          }
         }
       } on FirebaseAuthException catch (error) {
-        if (!mounted) return; // 檢查組件是否仍掛載
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.message ?? '註冊失敗'),
-          ),
-        );
+        _showMessage(error.message ?? '註冊失敗');
+      }
+      if (mounted) {
+        setState(() {
+          _isAuthenticating = false;
+        });
       }
     } else {
       return;
@@ -71,7 +137,14 @@ class _AuthScreenState extends State<AuthScreen> {
                           key: _from,
                           child: Column(
                             children: [
+                              if (!_hasAccount)
+                                UserImagePicker(
+                                  onPickImage: (pickImage) {
+                                    _selectedImage = pickImage;
+                                  },
+                                ),
                               TextFormField(
+                                controller: _emailController,
                                 decoration: const InputDecoration(
                                   labelText: '信箱',
                                   hintText: '請輸入您的信箱',
@@ -101,7 +174,28 @@ class _AuthScreenState extends State<AuthScreen> {
                                   }
                                 },
                               ),
+                              if (!_hasAccount)
+                                TextFormField(
+                                  controller: _usernameController,
+                                  decoration:
+                                      const InputDecoration(labelText: '暱稱'),
+                                  enableSuggestions: false,
+                                  validator: (value) {
+                                    if (value == null ||
+                                        value.isEmpty ||
+                                        value.trim().length > 6) {
+                                      return '請輸入六個字以內';
+                                    }
+                                    return null;
+                                  },
+                                  onSaved: (newValue) {
+                                    if (newValue != null) {
+                                      _enteredUsername = newValue;
+                                    }
+                                  },
+                                ),
                               TextFormField(
+                                controller: _passwordController,
                                 decoration: const InputDecoration(
                                   labelText: '密碼',
                                   hintText: '最多六位數',
@@ -136,16 +230,22 @@ class _AuthScreenState extends State<AuthScreen> {
                         const SizedBox(
                           height: 12,
                         ),
-                        ElevatedButton(
+                        if (_isAuthenticating)
+                          const CircularProgressIndicator(),
+                        if (!_isAuthenticating)
+                          ElevatedButton(
                             onPressed: _submit,
-                            child: Text(_hasAccount ? '登入' : '註冊')),
-                        TextButton(
+                            child: Text(_hasAccount ? '登入' : '註冊'),
+                          ),
+                        if (!_isAuthenticating)
+                          TextButton(
                             onPressed: () {
                               setState(() {
                                 _hasAccount = !_hasAccount;
                               });
                             },
-                            child: Text(_hasAccount ? '我要註冊' : '我要登入'))
+                            child: Text(_hasAccount ? '我要註冊' : '我要登入'),
+                          )
                       ],
                     ),
                   ),
