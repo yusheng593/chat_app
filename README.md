@@ -1,16 +1,9 @@
 # chat_app
 
-A new Flutter project.
+Flutter project with Firebase.
 
-## Getting Started
+## 使用 Firebase 進行註冊與儲存資料（用戶頭像、使用者）
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+![flutter_chat1](https://github.com/user-attachments/assets/6d606547-0dc2-4b71-9044-2300e127074f)
+![flutter_chat2 png](https://github.com/user-attachments/assets/ba91f1c0-0d0d-45b3-92ac-0a90c94b6ca6)
+![flutter_chat3 png](https://github.com/user-attachments/assets/0e565c46-0fbc-4a95-92e1-7d733c8cd073)
